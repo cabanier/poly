@@ -1,0 +1,85 @@
+﻿<!doctype html>
+<title>Tests</title>
+<script src="tokenizer.js"></script>
+<script src="parser.js"></script>
+<script src="http://code.jquery.com/jquery-2.1.1.min.js"></script>
+<script>
+    function BackgroundBlendModePolyfill(options) {
+        // set defaults
+        this.options = {
+            selector: '*',
+            usePolyfillIf: function () {
+                /*if (navigator.appName == 'Microsoft Internet Explorer') {
+                var agent = navigator.userAgent;
+                if (agent.match(/MSIE ([0-9]{1,}[\.0-9]{0,})/) != null) {
+                var version = parseFloat(RegExp.$1);
+                if (version < 11)
+                return true;
+                }
+                }
+                return false;
+                */
+                return true;
+            }
+        };
+        if (options) {
+            var obj = this;
+            $.each(options, function (k, v) {
+                obj.options[k] = v;
+            });
+        }
+
+        if (this.options.usePolyfillIf())
+            this.walk_css_tree();
+    }
+
+    // singleton initializer
+    BackgroundBlendModePolyfill.initialize = function (options) {
+        if (BackgroundBlendModePolyfill.singleton == null)
+            BackgroundBlendModePolyfill.singleton = new BackgroundBlendModePolyfill(options);
+        return BackgroundBlendModePolyfill.singleton;
+    };
+
+    // handle mouse events w/ support for pointer-events: none
+    BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
+        $(this.options.selector).each(function (i) {
+            var g = window.getComputedStyle(this, null);
+            var s = g["background-blend-mode"];
+            if (s && s != "normal") {
+                var b = g.backgroundImage;
+
+                var getRule = function(s) {
+                    var retval = "bar{";
+                    for(var x = 0; x < s.length; x++) {
+                        retval += s[x] + ":" + g[s[x]] + ";\n";
+                    }
+                    retval += "}";
+                    return retval;
+                }
+
+                var rule = getRule(["background-image", "background-blend-mode"]);
+                var tokens = tokenize(rule);
+                var sheet = parse(tokens);
+            }
+        });
+    };
+</script>
+<script>
+    $(document).ready(function () {
+        BackgroundBlendModePolyfill.initialize({selector: "#b"});
+    });
+</script>
+<style>
+#b 
+{
+    background: url("no-profile.png"), url("current.jpg"), yellow;
+    background-blend-mode: multiply;
+    width: 600px;
+    height: 400px;
+    foo: 45px;
+}
+</style>
+<body>
+<div id="b"></div>
+</body>
+</html>
