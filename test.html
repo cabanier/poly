@@ -45,7 +45,8 @@
         $(this.options.selector).each(function (i) {
             var g = window.getComputedStyle(this, null);
             var s = g["background-blend-mode"];
-            if (s && s != "normal") {
+            //if (s && s != "normal") {
+            if(true){
                 var b = g.backgroundImage;
 
                 var getRule = function(s) {
@@ -57,9 +58,274 @@
                     return retval;
                 }
 
-                var rule = getRule(["background-image", "background-blend-mode"]);
+                var getNumber = function(rule) {
+                    for(var x = 0; x < rule.value.length; x++) {
+                        if(Object.getPrototypeOf(rule.value[x]).tokenType == "NUMBER") {
+                            return rule.value[x].value;
+                        }
+                    }
+
+                    return 0;
+                }
+
+                var getURLS = function(rule) {
+                    var a = [];
+                    for(var x = 0; x < rule.value.length; x++) {
+                        if(Object.getPrototypeOf(rule.value[x]).tokenType == "URL") {
+                            a.push(rule.value[x].value);
+                        }
+                    }
+
+                    return a;
+                }
+
+                var getFunction = function(rule) {
+                    var s = "";
+                    if(Object.getPrototypeOf(rule).type == "FUNCTION") {
+                        s += rule.name + "(";
+                        for(var x = 0; x < rule.value.length; x++) {
+                            if(x)
+                                s += ", ";
+
+                            s += getNumber(rule.value[x]);
+                        }
+
+                        s += ")";
+
+                    }
+
+                    return s;
+                }
+
+                function CSSExtract(a, x) {
+                    return a[x%(a.length)];
+                }
+
+                var rule = getRule(["background-image", 
+                                    "background-blend-mode", 
+                                    "background-color",
+                                    "background-size",
+                                    "background-repeat",
+                                    "background-position"]);
                 var tokens = tokenize(rule);
-                var sheet = parse(tokens);
+                var sheet = parse(tokens).value[0].value;
+                var width = $(this).width();
+                var height = $(this).height();
+
+                var parseBackgrounds = function() {
+                    var retval = {};
+
+                    retval.images = getURLS(sheet[0]);
+                    var numImages = retval.images.length;
+
+                    var offset = 0;
+                    var bksize = sheet[3].value;
+                    retval.sizes = [];
+                    for(var x = 0; x < numImages; x++, offset++) {
+                        var entry = bksize[offset];
+
+                        while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                            entry = bksize[++offset];
+
+                        var xsize = entry.value;
+                        if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                            xsize = entry.num;
+                        } else if (Object.getPrototypeOf(entry).tokenType == "PERCENTAGE") {
+                            xsize = width * entry.value / 100;
+                        }
+                        entry = bksize[++offset];
+
+                        while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                            entry = bksize[++offset];
+
+                        var ysize = entry.value;
+                        if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                            ysize = entry.num;
+                        } else if (Object.getPrototypeOf(entry).tokenType == "PERCENTAGE") {
+                            ysize = height * entry.value / 100;
+                        }
+                        var imgwidth;
+                        var imgheight;
+
+                        if(xsize == "auto" && ysize == "auto") {
+                            imgwidth = htmlimages[x].width;
+                            imgheight = htmlimages[x].height;
+                        } else if(xsize == "auto") {
+                            imgheight = ysize;
+                            imgwidth = htmlimages[x].width/htmlimages[x].height*imgheight;
+                        } else if(ysize == "auto") {
+                            imgwidth = xsize;
+                            imgheight = htmlimages[x].height/htmlimages[x].width*imgwidth;
+                        } else {
+                            imgwidth = xsize;
+                            imgheight = ysize;
+                        }
+                        retval.sizes[x] = { width: imgwidth, height: imgheight};
+                    }
+
+                    retval.repeat = [];
+                    var bkrepeat = sheet[4].value;
+                    offset = 0;
+                    for(var x = 0; x < numImages; x++, offset++) {
+                        var entry = bkrepeat[offset];
+
+                        while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                            entry = bkrepeat[++offset];
+
+                        retval.repeat[x] = entry.value;
+                    }
+
+                    retval.position = [];
+                    var bkposition = sheet[5].value;
+                    offset = 0;
+                    for(var x = 0; x < numImages; x++, offset++) {
+                        var entry = bkposition[offset];
+                        var add = true;
+
+                        while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                            entry = bkposition[++offset];
+
+                        var xpos = entry.value;
+                        if (Object.getPrototypeOf(entry).tokenType == "IDENT") {
+                            if(retval.repeat[x] == "repeat" || retval.repeat[x] == "repeat-x")
+                                xpos = 0;
+                            else if(entry.value == "left")
+                                xpos = 0;
+                            else if(entry.value == "right") {
+                                xpos = width - retval.sizes[x].width;
+                                add = false;
+                            } else if(entry.value == "center")
+                                xpos = width/2;
+
+                            entry = bkposition[++offset];
+
+                            while(Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                                entry = bkposition[++offset];
+
+                            if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                                xpos += add?entry.num:-entry.num;
+                            }
+
+                            add = true;
+
+                        } else if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                            xpos = entry.num;
+                        }
+
+                        entry = bkposition[++offset];
+
+                        while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                            entry = bkposition[++offset];
+
+                        var ypos = entry.value;
+                        if (Object.getPrototypeOf(entry).tokenType == "IDENT") {
+                            if(retval.repeat[x] == "repeat" || retval.repeat[x] == "repeat-y")
+                                ypos = 0;
+                            else if(entry.value == "top")
+                                ypos = 0;
+                            else if(entry.value == "bottom") {
+                                ypos = height - retval.sizes[x].height;
+                                add = false;
+                            } else if(entry.value == "center")
+                                ypos = height/2;
+
+                            entry = bkposition[++offset];
+
+                            while(Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                                entry = bkposition[++offset];
+
+                            if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                                ypos += add?entry.num:-entry.num;
+                            }
+                        } else if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                            ypos = entry.num;
+                        }
+
+                        retval.position[x] = { x: xpos, y: ypos};
+                    }
+
+                return retval;
+                }
+
+                ////////////////////////
+                var images = getURLS(sheet[0]);
+                var htmlimages = [];
+                var cnt = 0;
+
+                var DoDraw = function(){
+                    cnt++;
+                    if(cnt<images.length)
+                        return;
+
+                    var info = parseBackgrounds();
+
+                    var canvaselement = $("#c").get(0);
+                    canvaselement.width = width;
+                    canvaselement.height = height;
+                    var ctx = canvaselement.getContext("2d");
+
+                    ctx.fillStyle = getFunction(sheet[2].value[0]);
+                    ctx.fillRect(0,0,width, height);
+
+                    for(var x = images.length-1; x >=0; x--) {
+                        if(CSSExtract(info.repeat, x) == "no-repeat")
+                            ctx.drawImage(htmlimages[x], CSSExtract(info.position, x).x, CSSExtract(info.position, x).y, htmlimages[x].width, htmlimages[x].height, 0, 0, CSSExtract(info.sizes, x).width, CSSExtract(info.sizes, x).height);
+                        else {
+                            var repeatstring = CSSExtract(info.repeat, x);
+                            var pattern = ctx.createPattern(htmlimages[x], CSSExtract(info.repeat, x));
+                            ctx.save();
+
+                            var scaleX = CSSExtract(info.sizes, x).width/htmlimages[x].width;
+                            var scaleY = CSSExtract(info.sizes, x).height/htmlimages[x].height;
+                            ctx.translate(CSSExtract(info.position, x).x, CSSExtract(info.position, x).y);
+                            ctx.scale(scaleX, scaleY);
+
+                            ctx.fillStyle = pattern;
+                            
+                            var xpos = 0;
+                            var ypos = 0;
+                            if(repeatstring == "repeat" || repeatstring == "repeat-x") {
+                                xpos -= width/scaleX;
+                            }
+                            if(repeatstring == "repeat" || repeatstring == "repeat-y") {
+                                ypos -= height/scaleY;
+                            }
+                            ctx.fillRect(xpos,ypos,width/scaleX*2, height/scaleY*2);
+                            ctx.restore();
+                        }
+                    }
+                }
+
+                if(!images.length)
+                    DoDraw();
+                else for(var x = 0; x < images.length; x++) {
+                    var img = new Image();
+                    htmlimages.push(img);
+                    img.onload = DoDraw;
+                    img.src = images[x];
+                }
+
+                /*var SVGString = "<svg width='100%' height='100%' xmlns:xlink='http://www.w3.org/1999/xlink'>\n";
+                // images
+                SVGString += "<defs>\n";
+                SVGString += "<filter id='blend'>\n";
+
+                var images = getURLS(sheet[0]);
+                for(var x = 0; x < images.length; x++) {
+                    SVGString += "<feImage result='image" + x + "' xlink:href='" + images[x] + "' x='0' y='0' preserveAspectRatio='none'/>\n";
+                }
+
+                SVGString += "<feBlend mode='multiply' in='image0' in2='SourceGraphic'/>\n";
+                SVGString += "</filter>\n";
+                SVGString += "</defs>\n";
+
+                // backdrop
+                SVGString += "<rect filter='url(#blend)' width='100%' height='100%' style='fill:"+ getFunction(sheet[2].value[0]) + "'>\n";
+
+                SVGString += "</svg>";
+
+                $("#c").get(0).innerHTML = SVGString;
+                */
             }
         });
     };
@@ -70,16 +336,24 @@
     });
 </script>
 <style>
-#b 
+div, canvas
 {
-    background: url("no-profile.png"), url("current.jpg"), yellow;
-    background-blend-mode: multiply;
     width: 600px;
     height: 400px;
-    foo: 45px;
+    border: solid;
+}
+#b 
+{
+    background: url("no-profile.png"), url("current.jpg");
+    backgrolund-blend-mode: multiply;
+    background-size: 30% 100px, auto 500px;
+    background-repeat: repeat no-repeat, no-repeat repeat ;
+    background-position: bottom 30px right 1cm;
 }
 </style>
 <body>
 <div id="b"></div>
+<br>
+<canvas id="c"></canvas>
 </body>
 </html>
