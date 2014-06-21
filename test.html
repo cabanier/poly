@@ -73,6 +73,8 @@
                     for(var x = 0; x < rule.value.length; x++) {
                         if(Object.getPrototypeOf(rule.value[x]).tokenType == "URL") {
                             a.push(rule.value[x].value);
+                        } else {
+                            a.push(rule.value[x]);
                         }
                     }
 
@@ -135,27 +137,42 @@
                         }
                         entry = bksize[++offset];
 
-                        while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
-                            entry = bksize[++offset];
+                        if(entry == undefined) {
+                            ysize = xsize;
+                        } else {
+                            while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                                entry = bksize[++offset];
 
-                        var ysize = entry.value;
-                        if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
-                            ysize = entry.num;
-                        } else if (Object.getPrototypeOf(entry).tokenType == "PERCENTAGE") {
-                            ysize = height * entry.value / 100;
+                            var ysize = entry.value;
+                            if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                                ysize = entry.num;
+                            } else if (Object.getPrototypeOf(entry).tokenType == "PERCENTAGE") {
+                                ysize = height * entry.value / 100;
+                            }
                         }
                         var imgwidth;
                         var imgheight;
 
                         if(xsize == "auto" && ysize == "auto") {
-                            imgwidth = htmlimages[x].width;
-                            imgheight = htmlimages[x].height;
+                            if(htmlimages[x]){
+                                imgwidth = htmlimages[x].width;
+                                imgheight = htmlimages[x].height;
+                            } else {
+                                imgwidth = width;
+                                imgheight = height;
+                            }
                         } else if(xsize == "auto") {
                             imgheight = ysize;
-                            imgwidth = htmlimages[x].width/htmlimages[x].height*imgheight;
+                            if(htmlimages[x])
+                                imgwidth = htmlimages[x].width/htmlimages[x].height*imgheight;
+                            else 
+                                imgwidth = width;
                         } else if(ysize == "auto") {
                             imgwidth = xsize;
-                            imgheight = htmlimages[x].height/htmlimages[x].width*imgwidth;
+                            if(htmlimages[x])
+                                imgheight = htmlimages[x].height/htmlimages[x].width*imgwidth;
+                            else 
+                                imgheight = height;
                         } else {
                             imgwidth = xsize;
                             imgheight = ysize;
@@ -210,6 +227,8 @@
 
                         } else if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
                             xpos = entry.num;
+                        } else if (Object.getPrototypeOf(entry).tokenType == "PERCENTAGE") {
+                            xpos = width * entry.value / 100;
                         }
 
                         entry = bkposition[++offset];
@@ -239,6 +258,8 @@
                             }
                         } else if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
                             ypos = entry.num;
+                        } else if (Object.getPrototypeOf(entry).tokenType == "PERCENTAGE") {
+                            ypos = height * entry.value / 100;
                         }
 
                         retval.position[x] = { x: xpos, y: ypos};
@@ -268,11 +289,15 @@
                     ctx.fillRect(0,0,width, height);
 
                     for(var x = images.length-1; x >=0; x--) {
+                        var paint = htmlimages[x];
+                        if (!paint) { // gradient
+
+                        }
                         if(CSSExtract(info.repeat, x) == "no-repeat")
-                            ctx.drawImage(htmlimages[x], CSSExtract(info.position, x).x, CSSExtract(info.position, x).y, htmlimages[x].width, htmlimages[x].height, 0, 0, CSSExtract(info.sizes, x).width, CSSExtract(info.sizes, x).height);
+                            ctx.drawImage(paint, CSSExtract(info.position, x).x, CSSExtract(info.position, x).y, htmlimages[x].width, htmlimages[x].height, 0, 0, CSSExtract(info.sizes, x).width, CSSExtract(info.sizes, x).height);
                         else {
                             var repeatstring = CSSExtract(info.repeat, x);
-                            var pattern = ctx.createPattern(htmlimages[x], CSSExtract(info.repeat, x));
+                            var pattern = ctx.createPattern(paint, CSSExtract(info.repeat, x));
                             ctx.save();
 
                             var scaleX = CSSExtract(info.sizes, x).width/htmlimages[x].width;
@@ -296,14 +321,20 @@
                     }
                 }
 
-                if(!images.length)
-                    DoDraw();
-                else for(var x = 0; x < images.length; x++) {
-                    var img = new Image();
-                    htmlimages.push(img);
-                    img.onload = DoDraw;
-                    img.src = images[x];
+                var CallDoDraw = true;
+                for(var x = 0; x < images.length; x++) {
+                    if(typeof images[x] === "string") {
+                        CallDoDraw = false;
+                        var img = new Image();
+                        htmlimages.push(img);
+                        img.onload = DoDraw;
+                        img.src = images[x];
+                    }
+                    else 
+                        htmlimages.push(undefined);
                 }
+                if(CallDoDraw)
+                    DoDraw();
 
                 /*var SVGString = "<svg width='100%' height='100%' xmlns:xlink='http://www.w3.org/1999/xlink'>\n";
                 // images
@@ -344,11 +375,14 @@ div, canvas
 }
 #b 
 {
+    /*
     background: url("no-profile.png"), url("current.jpg");
     backgrolund-blend-mode: multiply;
     background-size: 30% 100px, auto 500px;
     background-repeat: repeat no-repeat, no-repeat repeat ;
-    background-position: bottom 30px right 1cm;
+    background-position: bottom 30px right 1cm, 37.7952766418457px 30px;
+    */
+    background-image: linear-gradient(yellow, blue);
 }
 </style>
 <body>
