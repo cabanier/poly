@@ -60,7 +60,7 @@
 
                 var getNumber = function(rule) {
                     for(var x = 0; x < rule.value.length; x++) {
-                        if(Object.getPrototypeOf(rule.value[x]).tokenType == "NUMBER") {
+                        if(rule.value[x].tokenType == "NUMBER") {
                             return rule.value[x].value;
                         }
                     }
@@ -71,7 +71,7 @@
                 var getURLS = function(rule) {
                     var a = [];
                     for(var x = 0; x < rule.value.length; x++) {
-                        if(Object.getPrototypeOf(rule.value[x]).tokenType == "URL") {
+                        if(rule.value[x].tokenType == "URL") {
                             a.push(rule.value[x].value);
                         } else {
                             a.push(rule.value[x]);
@@ -95,6 +95,26 @@
                         s += ")";
 
                     }
+
+                    return s;
+                }
+
+                var getColor = function(rule) {
+                    if(Object.getPrototypeOf(rule).tokenType == "IDENT")
+                        return rule.value;
+
+                    var s = rule.name + "(";
+                    for(var x = 0; x < rule.value.length; x++) {
+                        if(x)
+                            s += ", ";
+
+                        var colorval;
+                        for(var y = 0; y < rule.value[x].value.length; y++)
+                            if(rule.value[x].value[y].tokenType != "WHITESPACE")
+                                colorval = rule.value[x].value[y].value;
+                        s += colorval;
+                    }
+                    s += ")";
 
                     return s;
                 }
@@ -126,13 +146,13 @@
                     for(var x = 0; x < numImages; x++, offset++) {
                         var entry = bksize[offset];
 
-                        while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                        while(entry.tokenType == "DELIM" || entry.tokenType == "WHITESPACE")
                             entry = bksize[++offset];
 
                         var xsize = entry.value;
-                        if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                        if (entry.tokenType == "DIMENSION") {
                             xsize = entry.num;
-                        } else if (Object.getPrototypeOf(entry).tokenType == "PERCENTAGE") {
+                        } else if (entry.tokenType == "PERCENTAGE") {
                             xsize = width * entry.value / 100;
                         }
                         entry = bksize[++offset];
@@ -140,13 +160,13 @@
                         if(entry == undefined) {
                             ysize = xsize;
                         } else {
-                            while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                            while(entry.tokenType == "DELIM" || entry.tokenType == "WHITESPACE")
                                 entry = bksize[++offset];
 
                             var ysize = entry.value;
-                            if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                            if (entry.tokenType == "DIMENSION") {
                                 ysize = entry.num;
-                            } else if (Object.getPrototypeOf(entry).tokenType == "PERCENTAGE") {
+                            } else if (entry.tokenType == "PERCENTAGE") {
                                 ysize = height * entry.value / 100;
                             }
                         }
@@ -186,7 +206,7 @@
                     for(var x = 0; x < numImages; x++, offset++) {
                         var entry = bkrepeat[offset];
 
-                        while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                        while(entry.tokenType == "DELIM" || entry.tokenType == "WHITESPACE")
                             entry = bkrepeat[++offset];
 
                         retval.repeat[x] = entry.value;
@@ -199,11 +219,11 @@
                         var entry = bkposition[offset];
                         var add = true;
 
-                        while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                        while(entry.tokenType == "DELIM" || entry.tokenType == "WHITESPACE")
                             entry = bkposition[++offset];
 
                         var xpos = entry.value;
-                        if (Object.getPrototypeOf(entry).tokenType == "IDENT") {
+                        if (entry.tokenType == "IDENT") {
                             if(retval.repeat[x] == "repeat" || retval.repeat[x] == "repeat-x")
                                 xpos = 0;
                             else if(entry.value == "left")
@@ -216,28 +236,28 @@
 
                             entry = bkposition[++offset];
 
-                            while(Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                            while(entry.tokenType == "WHITESPACE")
                                 entry = bkposition[++offset];
 
-                            if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                            if (entry.tokenType == "DIMENSION") {
                                 xpos += add?entry.num:-entry.num;
                             }
 
                             add = true;
 
-                        } else if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                        } else if (entry.tokenType == "DIMENSION") {
                             xpos = entry.num;
-                        } else if (Object.getPrototypeOf(entry).tokenType == "PERCENTAGE") {
+                        } else if (entry.tokenType == "PERCENTAGE") {
                             xpos = width * entry.value / 100;
                         }
 
                         entry = bkposition[++offset];
 
-                        while(Object.getPrototypeOf(entry).tokenType == "DELIM" || Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                        while(entry.tokenType == "DELIM" || entry.tokenType == "WHITESPACE")
                             entry = bkposition[++offset];
 
                         var ypos = entry.value;
-                        if (Object.getPrototypeOf(entry).tokenType == "IDENT") {
+                        if (entry.tokenType == "IDENT") {
                             if(retval.repeat[x] == "repeat" || retval.repeat[x] == "repeat-y")
                                 ypos = 0;
                             else if(entry.value == "top")
@@ -250,15 +270,15 @@
 
                             entry = bkposition[++offset];
 
-                            while(Object.getPrototypeOf(entry).tokenType == "WHITESPACE")
+                            while(entry.tokenType == "WHITESPACE")
                                 entry = bkposition[++offset];
 
-                            if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                            if (entry.tokenType == "DIMENSION") {
                                 ypos += add?entry.num:-entry.num;
                             }
-                        } else if (Object.getPrototypeOf(entry).tokenType == "DIMENSION") {
+                        } else if (entry.tokenType == "DIMENSION") {
                             ypos = entry.num;
-                        } else if (Object.getPrototypeOf(entry).tokenType == "PERCENTAGE") {
+                        } else if (entry.tokenType == "PERCENTAGE") {
                             ypos = height * entry.value / 100;
                         }
 
@@ -268,10 +288,145 @@
                 return retval;
                 }
 
+                var radians = function(degrees) {
+                    return degrees * Math.PI / 180;
+                };
+
+                var degrees = function(radians) {
+                    return radians / Math.PI * 180;
+                };
+
                 ////////////////////////
                 var images = getURLS(sheet[0]);
                 var htmlimages = [];
                 var cnt = 0;
+
+                var createGradient = function(info) {
+                    var canv;
+                    if (info.name == "linear-gradient" || info.name == "radial-gradient") {
+                        canv = document.createElement("canvas");
+                        canv.width = width;
+                        canv.height = height;
+                    }
+
+                    var offset = 0;
+                    var stops = [];
+                    var colors = [];
+                    var angle = 0;
+                    if (info.name == "linear-gradient" ) {
+                        for(var x = 0; x < info.value.length; x++) {
+                            var stopFunction = info.value[x];
+                            var stop;
+                            var stoppos = NaN;
+                            var SetAngle = false;
+                            for(var y = 0; y < stopFunction.value.length; y++) {
+                                if(stopFunction.value[y].tokenType != "WHITESPACE") {
+                                    if(stopFunction.value[y].tokenType == "DIMENSION") {
+                                        SetAngle = true;
+                                        angle = stopFunction.value[y].num;
+                                    } else if(stopFunction.value[y].tokenType == "PERCENTAGE")
+                                        stoppos = stopFunction.value[y].value/100;
+                                    else
+                                        stop = stopFunction.value[y];
+                                }
+
+                            }
+                            if(!SetAngle) {
+                                stops.push(stoppos);
+                                colors.push(getColor(stop));
+                            }
+                        }
+                    }
+                    else if (info.name == "radial-gradient" )
+                        for(var x = 0; x < info.value.length; x++) {
+                            var stopFunction = info.value[x];
+                            var stop;
+                            var stoppos = NaN;
+                            var SetAngle = false;
+                            for(var y = 0; y < stopFunction.value.length; y++) {
+                                if(stopFunction.value[y].tokenType != "WHITESPACE") {
+                                    if(stopFunction.value[y].tokenType == "PERCENTAGE")
+                                        stoppos = stopFunction.value[y].value/100;
+                                    else
+                                        stop = stopFunction.value[y];
+                                }
+
+                            }
+                            stops.push(stoppos);
+                            colors.push(getColor(stop));
+                        }
+
+                    if(isNaN(stops[0]))
+                        stops[0] = 0;
+
+                    if(isNaN(stops[stops.length-1]))
+                        stops[stops.length-1] = 1.0;
+
+                    var curval = 0;
+                    for(var x = 0; x < stops.length; x++) {
+                        if(stops[x] < curval)
+                            stops[x] = curval;
+
+                        if(!isNaN(stops[x]))
+                            curval = stops[x];
+                    }
+
+                    for(var x = 0; x < stops.length; x++) {
+                        if(isNaN(stops[x])) {
+                            var prev = stops[x-1];
+                            var next = NaN;
+                            var y = x+1;
+                            while(isNaN(stops[y]))
+                                y++;
+
+                            stops[x] = prev + (stops[y] - prev) / (y-x+1);
+                        }    
+                    }
+                    
+
+                    if (info.name == "linear-gradient") {
+                        var hyp = Math.sqrt(width*width/4 + height*height/4);
+                        var baseangle = degrees(Math.asin(width/2/hyp));
+
+                        // normalize angle
+                        while(angle<0)
+                            angle += 360;
+                        angle %= 360;
+
+                        var length;
+                        var reducedAngle = angle%180;
+                        if(reducedAngle>90)
+                            reducedAngle = 180 - reducedAngle;
+                        if(reducedAngle <= baseangle)
+                            length = hyp*Math.cos(radians(baseangle-reducedAngle));
+                        else
+                            length = hyp*Math.cos(radians(reducedAngle-baseangle));
+
+                        var offsetx = Math.sin(radians(angle)) * length;
+                        var offsety = Math.cos(radians(angle)) * length;
+
+                        var ctx = canv.getContext("2d");;
+                        var grad = ctx.createLinearGradient(width/2 - offsetx,height/2 + offsety,width/2 + offsetx,height/2 - offsety);
+                        for(var x = 0; x < stops.length; x++) 
+                            grad.addColorStop(stops[x], colors[x]);
+
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(0,0,width, height);
+                    } else if(info.name == "radial-gradient") {
+                        var ctx = canv.getContext("2d");;
+                        var grad = ctx.createRadialGradient(height/2,height/2,0,height/2,height/2, Math.sqrt(2)*height/2);
+                        for(var x = 0; x < stops.length; x++) 
+                            grad.addColorStop(stops[x], colors[x]);
+
+                        ctx.save();
+                        ctx.scale(width/height, 1);
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(0,0,width, height);
+                        ctx.restore();
+                    }
+
+                    return canv;
+                }
 
                 var DoDraw = function(){
                     cnt++;
@@ -290,18 +445,25 @@
 
                     for(var x = images.length-1; x >=0; x--) {
                         var paint = htmlimages[x];
+                        var imgwidth;
+                        var imgheight;
                         if (!paint) { // gradient
-
+                            paint = createGradient(images[x]);
+                            imgwidth = width;
+                            imgheight = height;
+                        } else {
+                            imgwidth = htmlimages[x].width;
+                            imgheight = htmlimages[x].height;                          
                         }
                         if(CSSExtract(info.repeat, x) == "no-repeat")
-                            ctx.drawImage(paint, CSSExtract(info.position, x).x, CSSExtract(info.position, x).y, htmlimages[x].width, htmlimages[x].height, 0, 0, CSSExtract(info.sizes, x).width, CSSExtract(info.sizes, x).height);
+                            ctx.drawImage(paint, CSSExtract(info.position, x).x, CSSExtract(info.position, x).y, imgwidth, imgheight, 0, 0, CSSExtract(info.sizes, x).width, CSSExtract(info.sizes, x).height);
                         else {
                             var repeatstring = CSSExtract(info.repeat, x);
                             var pattern = ctx.createPattern(paint, CSSExtract(info.repeat, x));
                             ctx.save();
 
-                            var scaleX = CSSExtract(info.sizes, x).width/htmlimages[x].width;
-                            var scaleY = CSSExtract(info.sizes, x).height/htmlimages[x].height;
+                            var scaleX = CSSExtract(info.sizes, x).width/imgwidth;
+                            var scaleY = CSSExtract(info.sizes, x).height/imgheight;
                             ctx.translate(CSSExtract(info.position, x).x, CSSExtract(info.position, x).y);
                             ctx.scale(scaleX, scaleY);
 
@@ -335,28 +497,6 @@
                 }
                 if(CallDoDraw)
                     DoDraw();
-
-                /*var SVGString = "<svg width='100%' height='100%' xmlns:xlink='http://www.w3.org/1999/xlink'>\n";
-                // images
-                SVGString += "<defs>\n";
-                SVGString += "<filter id='blend'>\n";
-
-                var images = getURLS(sheet[0]);
-                for(var x = 0; x < images.length; x++) {
-                    SVGString += "<feImage result='image" + x + "' xlink:href='" + images[x] + "' x='0' y='0' preserveAspectRatio='none'/>\n";
-                }
-
-                SVGString += "<feBlend mode='multiply' in='image0' in2='SourceGraphic'/>\n";
-                SVGString += "</filter>\n";
-                SVGString += "</defs>\n";
-
-                // backdrop
-                SVGString += "<rect filter='url(#blend)' width='100%' height='100%' style='fill:"+ getFunction(sheet[2].value[0]) + "'>\n";
-
-                SVGString += "</svg>";
-
-                $("#c").get(0).innerHTML = SVGString;
-                */
             }
         });
     };
@@ -382,7 +522,10 @@ div, canvas
     background-repeat: repeat no-repeat, no-repeat repeat ;
     background-position: bottom 30px right 1cm, 37.7952766418457px 30px;
     */
-    background-image: linear-gradient(yellow, blue);
+    /*background-size: 30% 100px;
+    background-position: bottom 30px right 1cm;
+    */
+    background-image: radial-gradient(yellow, green 20%, purple, rgb(255, 127, 0));
 }
 </style>
 <body>
