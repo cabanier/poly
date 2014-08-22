@@ -39,8 +39,7 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
     $(this.options.selector).each(function (i) {
         var g = window.getComputedStyle(this, null);
         var s = g["background-blend-mode"];
-        //if (s && s != "normal") {
-        if (true) {
+        if (s && s != "normal") {
             var b = g.backgroundImage;
 
             var getRule = function (s) {
@@ -566,8 +565,8 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
                     var bmode = CSSExtract(info.blendmodes, x);
                     if (bmode == "normal")
                         bmode = "source-over";
-                    //if(bmode != "normal")
-                    //    ctx.globalCompositeOperation = bmode;
+                    if(bmode != "normal")
+                        ctx.globalCompositeOperation = bmode;
                     if (bmode != ctx.globalCompositeOperation) { //unsupported
                         oldctx = ctx;
                         var canv = document.createElement("canvas");
