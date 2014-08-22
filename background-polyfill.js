@@ -544,14 +544,15 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
                 return canv;
             }
 
+            var thiselement = this;
+
             var DoDraw = function () {
                 cnt++;
                 if (cnt < images.length)
                     return;
 
                 var info = parseBackgrounds();
-
-                var canvaselement = $("#c").get(0);
+                var canvaselement = document.createElement('canvas');
                 canvaselement.width = width;
                 canvaselement.height = height;
                 var ctx = canvaselement.getContext("2d");
@@ -761,6 +762,8 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
                     }
                     ctx.restore();
                 }
+                var imagepixels = canvaselement.toDataURL('image/jpeg');
+                thiselement.style.backgroundImage = 'url(' + imagepixels + ')';
             }
 
             var CallDoDraw = true;
