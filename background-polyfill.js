@@ -764,6 +764,11 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
                 }
                 var imagepixels = canvaselement.toDataURL('image/jpeg');
                 thiselement.style.backgroundImage = 'url(' + imagepixels + ')';
+                thiselement.style.backgroundPosition = "0 0";
+                thiselement.style.backgroundSize = "100% 100%";
+                thiselement.style.backgroundColor = "transparent";
+                thiselement.style.backgroundBlendMode = "normal";
+
             }
 
             var CallDoDraw = true;
