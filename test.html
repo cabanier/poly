@@ -3,671 +3,7 @@
 <script src="tokenizer.js"></script>
 <script src="parser.js"></script>
 <script src="http://code.jquery.com/jquery-2.1.1.min.js"></script>
-<script>
-    function BackgroundBlendModePolyfill(options) {
-        // set defaults
-        this.options = {
-            selector: '*',
-            usePolyfillIf: function () {
-                /*if (navigator.appName == 'Microsoft Internet Explorer') {
-                var agent = navigator.userAgent;
-                if (agent.match(/MSIE ([0-9]{1,}[\.0-9]{0,})/) != null) {
-                var version = parseFloat(RegExp.$1);
-                if (version < 11)
-                return true;
-                }
-                }
-                return false;
-                */
-                return true;
-            }
-        };
-        if (options) {
-            var obj = this;
-            $.each(options, function (k, v) {
-                obj.options[k] = v;
-            });
-        }
-
-        if (this.options.usePolyfillIf())
-            this.walk_css_tree();
-    }
-
-    // singleton initializer
-    BackgroundBlendModePolyfill.initialize = function (options) {
-        if (BackgroundBlendModePolyfill.singleton == null)
-            BackgroundBlendModePolyfill.singleton = new BackgroundBlendModePolyfill(options);
-        return BackgroundBlendModePolyfill.singleton;
-    };
-
-    // handle mouse events w/ support for pointer-events: none
-    BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
-        $(this.options.selector).each(function (i) {
-            var g = window.getComputedStyle(this, null);
-            var s = g["background-blend-mode"];
-            //if (s && s != "normal") {
-            if(true){
-                var b = g.backgroundImage;
-
-                var getRule = function(s) {
-                    var retval = "bar{";
-                    for(var x = 0; x < s.length; x++) {
-                        if(g[s[x]])
-                            retval += s[x] + ":" + g[s[x]] + ";\n";
-                        else
-                            retval += s[x] + ":" + g[toCamelCase(s[x])] + ";\n";
-                    }
-                    retval += "}";
-                    return retval;
-                }
-
-                var getNumber = function(rule) {
-                    for(var x = 0; x < rule.value.length; x++) {
-                        if(rule.value[x].tokenType == "NUMBER") {
-                            return rule.value[x].value;
-                        }
-                    }
-
-                    return 0;
-                }
-
-                var getURLS = function(rule) {
-                    var a = [];
-                    for(var x = 0; x < rule.value.length; x++) {
-                        if(rule.value[x].tokenType == "DELIM")
-                            continue;
-                        if(rule.value[x].tokenType == "WHITESPACE")
-                            continue;
-                        if(rule.value[x].tokenType == "URL") {
-                            a.push(rule.value[x].value);
-                        } else if(rule.value[x].type == "FUNCTION"){
-                            a.push(rule.value[x]);
-                        }
-                    }
-
-                    return a;
-                }
-
-                var getFunction = function(rule) {
-                    var s = "";
-                    if(Object.getPrototypeOf(rule).type == "FUNCTION") {
-                        s += rule.name + "(";
-                        for(var x = 0; x < rule.value.length; x++) {
-                            if(x)
-                                s += ", ";
-
-                            s += getNumber(rule.value[x]);
-                        }
-
-                        s += ")";
-
-                    }
-
-                    return s;
-                }
-
-                var getColor = function(rule) {
-                    if(Object.getPrototypeOf(rule).tokenType == "IDENT")
-                        return rule.value;
-
-                    var s = rule.name + "(";
-                    for(var x = 0; x < rule.value.length; x++) {
-                        if(x)
-                            s += ", ";
-
-                        var colorval;
-                        for(var y = 0; y < rule.value[x].value.length; y++)
-                            if(rule.value[x].value[y].tokenType != "WHITESPACE")
-                                colorval = rule.value[x].value[y].value;
-                        s += colorval;
-                    }
-                    s += ")";
-
-                    return s;
-                }
-
-                function CSSExtract(a, x) {
-                    return a[x%(a.length)];
-                }
-
-                function toCamelCase(s) {
-                    s = s.replace(/([^a-zA-Z0-9_\- ])|^[_0-9]+/g, "").trim().toLowerCase();
-                    s = s.replace(/([ -]+)([a-zA-Z0-9])/g, function(a,b,c) {
-                        return c.toUpperCase();
-                    });
-                    s = s.replace(/([0-9]+)([a-zA-Z])/g, function(a,b,c) {
-                        return b + c.toUpperCase();
-                    });
-                    return s;
-                }
-                var rule = getRule(["background-image", 
-                                    "background-blend-mode", 
-                                    "background-color",
-                                    "background-size",
-                                    "background-repeat",
-                                    "background-position"]);
-                var tokens = tokenize(rule);
-                var sheet = parse(tokens).value[0].value;
-                var width = $(this).width();
-                var height = $(this).height();
-
-                var parseBackgrounds = function() {
-                    var retval = {};
-
-                    retval.images = getURLS(sheet[0]);
-                    var numImages = retval.images.length;
-
-                    var offset = 0;
-                    var bksize = sheet[3].value;
-                    retval.sizes = [];
-                    for(var x = 0; x < numImages; x++, offset++) {
-                        var entry = bksize[offset];
-
-                        if(entry) {
-                            while(entry.tokenType == "DELIM" || entry.tokenType == "WHITESPACE")
-                                entry = bksize[++offset];
-
-                            var xsize = entry.value;
-                            if (entry.tokenType == "DIMENSION") {
-                                xsize = entry.num;
-                            } else if (entry.tokenType == "PERCENTAGE") {
-                                xsize = width * entry.value / 100;
-                            }
-                            entry = bksize[++offset];
-
-                            if(entry == undefined) {
-                                ysize = xsize;
-                            } else {
-                                while(entry.tokenType == "DELIM" || entry.tokenType == "WHITESPACE")
-                                    entry = bksize[++offset];
-
-                                var ysize = entry.value;
-                                if (entry.tokenType == "DIMENSION") {
-                                    ysize = entry.num;
-                                } else if (entry.tokenType == "PERCENTAGE") {
-                                    ysize = height * entry.value / 100;
-                                }
-                            }
-                            var imgwidth;
-                            var imgheight;
-                        } // this should be fixed for missing background sizes
-
-                        if(xsize == "auto" && ysize == "auto") {
-                            if(htmlimages[x]){
-                                imgwidth = htmlimages[x].width;
-                                imgheight = htmlimages[x].height;
-                            } else {
-                                imgwidth = width;
-                                imgheight = height;
-                            }
-                        } else if(xsize == "auto") {
-                            imgheight = ysize;
-                            if(htmlimages[x])
-                                imgwidth = htmlimages[x].width/htmlimages[x].height*imgheight;
-                            else 
-                                imgwidth = width;
-                        } else if(ysize == "auto") {
-                            imgwidth = xsize;
-                            if(htmlimages[x])
-                                imgheight = htmlimages[x].height/htmlimages[x].width*imgwidth;
-                            else 
-                                imgheight = height;
-                        } else {
-                            imgwidth = xsize;
-                            imgheight = ysize;
-                        }
-                        retval.sizes[x] = { width: imgwidth, height: imgheight};
-                    }
-
-                    retval.repeat = [];
-                    var bkrepeat = sheet[4].value;
-                    offset = 0;
-                    for(var x = 0; x < numImages; x++, offset++) {
-                        var entry = bkrepeat[offset];
-
-                        while(entry.tokenType == "DELIM" || entry.tokenType == "WHITESPACE")
-                            entry = bkrepeat[++offset];
-
-                        retval.repeat[x] = entry.value;
-                    }
-
-                    retval.position = [];
-                    var bkposition = sheet[5].value;
-                    offset = 0;
-                    for(var x = 0; x < numImages; x++, offset++) {
-                        var entry = bkposition[offset];
-                        var add = true;
-
-                        while(entry.tokenType == "DELIM" || entry.tokenType == "WHITESPACE")
-                            entry = bkposition[++offset];
-
-                        var xpos = entry.value;
-                        if (entry.tokenType == "IDENT") {
-                            if(retval.repeat[x] == "repeat" || retval.repeat[x] == "repeat-x")
-                                xpos = 0;
-                            else if(entry.value == "left")
-                                xpos = 0;
-                            else if(entry.value == "right") {
-                                xpos = width - retval.sizes[x].width;
-                                add = false;
-                            } else if(entry.value == "center")
-                                xpos = width/2;
-
-                            entry = bkposition[++offset];
-
-                            while(entry.tokenType == "WHITESPACE")
-                                entry = bkposition[++offset];
-
-                            if (entry.tokenType == "DIMENSION") {
-                                xpos += add?entry.num:-entry.num;
-                            }
-
-                            add = true;
-
-                        } else if (entry.tokenType == "DIMENSION") {
-                            xpos = entry.num;
-                        } else if (entry.tokenType == "PERCENTAGE") {
-                            xpos = width * entry.value / 100;
-                        }
-
-                        entry = bkposition[++offset];
-
-                        while(entry.tokenType == "DELIM" || entry.tokenType == "WHITESPACE")
-                            entry = bkposition[++offset];
-
-                        var ypos = entry.value;
-                        if (entry.tokenType == "IDENT") {
-                            if(retval.repeat[x] == "repeat" || retval.repeat[x] == "repeat-y")
-                                ypos = 0;
-                            else if(entry.value == "top")
-                                ypos = 0;
-                            else if(entry.value == "bottom") {
-                                ypos = height - retval.sizes[x].height;
-                                add = false;
-                            } else if(entry.value == "center")
-                                ypos = height/2;
-
-                            entry = bkposition[++offset];
-
-                            while(entry.tokenType == "WHITESPACE")
-                                entry = bkposition[++offset];
-
-                            if (entry.tokenType == "DIMENSION") {
-                                ypos += add?entry.num:-entry.num;
-                            }
-                        } else if (entry.tokenType == "DIMENSION") {
-                            ypos = entry.num;
-                        } else if (entry.tokenType == "PERCENTAGE") {
-                            ypos = height * entry.value / 100;
-                        }
-
-                        retval.position[x] = { x: xpos, y: ypos};
-                    }
-
-                    retval.blendmodes = [];
-                    var bkblend = sheet[1].value;
-                    offset = 0;
-                    for(var x = 0; x < bkblend.length; x++) {
-                        var entry = bkblend[x];
-                        
-                        if (entry.tokenType == "IDENT") 
-                            retval.blendmodes.push(entry.value);
-                    }
-
-                return retval;
-                }
-
-                var radians = function(degrees) {
-                    return degrees * Math.PI / 180;
-                };
-
-                var degrees = function(radians) {
-                    return radians / Math.PI * 180;
-                };
-
-                var ToPx = function(DimToken) {
-                    switch(DimToken.unit) {
-                        case "px": return DimToken.num;
-                        case "em": return DimToken.num * parseFloat(g["font-size"]);
-                        case "cm": return DimToken.num / 2.54 * 96;
-                        case "mm": return DimToken.num / 2.54 * 96 / 10;
-                        case "in": return DimToken.num / 96;
-                        case "pt": return DimToken.num / 72 * 96;
-                        case "ct": return DimToken.num / 6 * 96;
-                    }
-                    return 0;
-                }
-
-                ////////////////////////
-                var images = getURLS(sheet[0]);
-                var htmlimages = [];
-                var cnt = 0;
-
-                var createGradient = function(info, width, height) {
-                    var canv;
-                    if (info.name == "linear-gradient" || info.name == "radial-gradient") {
-                        canv = document.createElement("canvas");
-                        canv.width = width;
-                        canv.height = height;
-                    }
-
-                    var offset = 0;
-                    var stops = [];
-                    var colors = [];
-                    var abscolors =[];
-                    var angle = 0;
-                    var radialSizeX = NaN;
-                    var radialSizeY= NaN;
-                    var xgradpos = NaN;
-                    var ygradpos = NaN;
-                    var ellipse = true;
-                    var absolutepos = false;
-                    if (info.name == "linear-gradient" ) {
-                        for(var x = 0; x < info.value.length; x++) {
-                            var stopFunction = info.value[x];
-                            var stop;
-                            var stoppos = NaN;
-                            var SetAngle = false;
-                            for(var y = 0; y < stopFunction.value.length; y++) {
-                                if(stopFunction.value[y].tokenType != "WHITESPACE") {
-                                    if(stopFunction.value[y].tokenType == "DIMENSION") {
-                                        SetAngle = true;
-                                        angle = stopFunction.value[y].num;
-                                    } else if(stopFunction.value[y].tokenType == "PERCENTAGE")
-                                        stoppos = stopFunction.value[y].value/100;
-                                    else
-                                        stop = stopFunction.value[y];
-                                }
-
-                            }
-                            if(!SetAngle) {
-                                abscolors.push(absolutepos);
-                                stops.push(stoppos);
-                                colors.push(getColor(stop));
-                            }
-                        }
-                    }
-                    else if (info.name == "radial-gradient" ) {
-                        for(var x = 0; x < info.value.length; x++) {
-                            var stopFunction = info.value[x];
-                            var stop;
-                            var absolutepos = false;
-                            var stoppos = NaN;
-                            var SetAngle = false;
-                            var doingpositioning = false;
-                            for(var y = 0; y < stopFunction.value.length; y++) {
-                                if(stopFunction.value[y].tokenType != "WHITESPACE") {
-                                    if (stopFunction.value[y].tokenType == "IDENT" && (
-                                            stopFunction.value[y].value == "at" ||
-                                            stopFunction.value[y].value == "circle" ||
-                                            stopFunction.value[y].value == "ellipse")) {
-                                        radialSizeX = Infinity;
-                                        radialSizeY = Infinity;
-                                        doingpositioning = true;
-                                        if(stopFunction.value[y].value == "circle")
-                                            ellipse = false;
-                                    } else if(stopFunction.value[y].tokenType == "DIMENSION") {
-                                        if (doingpositioning) {
-                                            if(isNaN(radialSizeX)) {
-                                                radialSizeX = ToPx(stopFunction.value[y]);
-                                                radialSizeY = ToPx(stopFunction.value[y]);
-                                                ellipse = false;
-                                                doingpositioning = true;
-                                            } else if(isNaN(xgradpos))
-                                                xgradpos = ToPx(stopFunction.value[y]);
-                                            else
-                                                ygradpos = ToPx(stopFunction.value[y]);
-                                        } else {
-                                            stoppos = ToPx(stopFunction.value[y]);
-                                            absolutepos = true;
-                                        }
-                                    } else if(stopFunction.value[y].tokenType == "PERCENTAGE"){
-                                        if (doingpositioning) {
-                                            if(isNaN(xgradpos))
-                                                xgradpos = stopFunction.value[y].value/100 * width;
-                                            else
-                                                ygradpos = stopFunction.value[y].value/100 * height;
-                                        } else
-                                            stoppos = stopFunction.value[y].value/100;
-                                    }
-                                    else {
-                                        if (doingpositioning) {
-                                            if(isNaN(xgradpos))
-                                                xgradpos = stopFunction.value[y].value;
-                                            else
-                                                ygradpos = stopFunction.value[y].value;
-                                        } else
-                                            stop = stopFunction.value[y];
-                                    }
-                                }
-                            }
-
-                            if(stop) {
-                                abscolors.push(absolutepos);
-                                stops.push(stoppos);
-                                colors.push(getColor(stop));
-                            }
-
-                         if(isNaN(xgradpos))
-                            xgradpos = width/2;
-                         if(isNaN(ygradpos))
-                            ygradpos = height/2;
-                        }
-
-                        if(isNaN(radialSizeX) || !isFinite(radialSizeX)) {
-                            var radialSizeX = xgradpos>(width/2)? xgradpos:(width - xgradpos);
-                            var radialSizeY = ygradpos>(height/2)? ygradpos:(height - ygradpos);
-                        }
-                    }
-                    
-                    var grad;
-                    var gradLength;
-                    if (info.name == "linear-gradient") {
-                        var hyp = Math.sqrt(width*width/4 + height*height/4);
-                        var baseangle = degrees(Math.asin(width/2/hyp));
-
-                        // normalize angle
-                        while(angle<0)
-                            angle += 360;
-                        angle %= 360;
-
-                        var length;
-                        var reducedAngle = angle%180;
-                        if(reducedAngle>90)
-                            reducedAngle = 180 - reducedAngle;
-                        if(reducedAngle <= baseangle)
-                            length = hyp*Math.cos(radians(baseangle-reducedAngle));
-                        else
-                            length = hyp*Math.cos(radians(reducedAngle-baseangle));
-
-                        gradLength = 2*length;
-
-                        var offsetx = Math.sin(radians(angle)) * length;
-                        var offsety = Math.cos(radians(angle)) * length;
-
-                        var ctx = canv.getContext("2d");;
-                        grad = ctx.createLinearGradient(width/2 - offsetx,height/2 + offsety,width/2 + offsetx,height/2 - offsety);
-                    } else if(info.name == "radial-gradient") {
-                        var ctx = canv.getContext("2d");
-                        var ratio = radialSizeX/radialSizeY;
-                        if(ellipse)
-                            grad = ctx.createRadialGradient(xgradpos/ratio,ygradpos,0,xgradpos/ratio,ygradpos, Math.sqrt(2)*radialSizeY);
-                        else
-                            grad = ctx.createRadialGradient(xgradpos,ygradpos,0,xgradpos,ygradpos, Math.sqrt(radialSizeX*radialSizeX+radialSizeY*radialSizeY));
-
-                        gradLength = Math.sqrt(radialSizeX*radialSizeX+radialSizeY*radialSizeY);
-                    }
-
-                    for(var x = 0; x < stops.length; x++)
-                        if(abscolors[x])
-                            stops[x] /= gradLength;
-
-                    if(isNaN(stops[0]))
-                        stops[0] = 0;
-
-                    if(isNaN(stops[stops.length-1]))
-                        stops[stops.length-1] = 1.0;                    
-
-                    var curval = 0;
-                    for(var x = 0; x < stops.length; x++) {
-                        if(stops[x] < curval)
-                            stops[x] = curval;
-
-                        if(!isNaN(stops[x]))
-                            curval = stops[x];
-                    }
-
-                    for(var x = 0; x < stops.length; x++) {
-                        if(isNaN(stops[x])) {
-                            var prev = stops[x-1];
-                            var next = NaN;
-                            var y = x+1;
-                            while(isNaN(stops[y]))
-                                y++;
-
-                            stops[x] = prev + (stops[y] - prev) / (y-x+1);
-                        }    
-                    }
-
-                    for(var x = 0; x < stops.length; x++) 
-                        grad.addColorStop(stops[x], colors[x]);
-
-                    ctx.save();
-                    if(ellipse)
-                        ctx.scale(ratio, 1);
-                    ctx.fillStyle = grad;
-                    ctx.fillRect(0,0,width+height, width+height);
-                    ctx.restore();
-
-                    return canv;
-                }
-
-                var DoDraw = function(){
-                    cnt++;
-                    if(cnt<images.length)
-                        return;
-
-                    var info = parseBackgrounds();
-
-                    var canvaselement = $("#c").get(0);
-                    canvaselement.width = width;
-                    canvaselement.height = height;
-                    var ctx = canvaselement.getContext("2d");
-                    var oldctx;
-
-                    ctx.fillStyle = getFunction(sheet[2].value[0]);
-                    ctx.fillRect(0,0,width, height);
-
-                    for(var x = images.length-1; x >=0; x--) {
-                        ctx.save();
-                        var bmode = CSSExtract(info.blendmodes, x);
-                        //if(bmode != "normal")
-                        //    ctx.globalCompositeOperation = bmode;
-                        if(bmode != ctx.globalCompositeOperation) { //unsupported
-                            oldctx = ctx;
-                            var canv = document.createElement("canvas");
-                            canv.width = width;
-                            canv.height = height;
-                            ctx = canv.getContext("2d");
-                        }
-
-                        var paint = htmlimages[x];
-                        var imgwidth;
-                        var imgheight;
-                        if (!paint) { // gradient
-                            paint = createGradient(images[x], CSSExtract(info.sizes, x).width, CSSExtract(info.sizes, x).height);
-                            imgwidth = CSSExtract(info.sizes, x).width;
-                            imgheight = CSSExtract(info.sizes, x).height;
-                        } else {
-                            imgwidth = htmlimages[x].width;
-                            imgheight = htmlimages[x].height;                          
-                        }
-                        if(CSSExtract(info.repeat, x) == "no-repeat")
-                            ctx.drawImage(paint, CSSExtract(info.position, x).x, CSSExtract(info.position, x).y, imgwidth, imgheight, 0, 0, CSSExtract(info.sizes, x).width, CSSExtract(info.sizes, x).height);
-                        else {
-                            var repeatstring = CSSExtract(info.repeat, x);
-                            var pattern = ctx.createPattern(paint, CSSExtract(info.repeat, x));
-                            ctx.save();
-
-                            var scaleX = CSSExtract(info.sizes, x).width/imgwidth;
-                            var scaleY = CSSExtract(info.sizes, x).height/imgheight;
-                            ctx.translate(CSSExtract(info.position, x).x, CSSExtract(info.position, x).y);
-                            ctx.scale(scaleX, scaleY);
-
-                            ctx.fillStyle = pattern;
-                            
-                            var xpos = 0;
-                            var ypos = 0;
-                            if(repeatstring == "repeat" || repeatstring == "repeat-x") {
-                                xpos -= width/scaleX;
-                            }
-                            if(repeatstring == "repeat" || repeatstring == "repeat-y") {
-                                ypos -= height/scaleY;
-                            }
-                            ctx.fillRect(xpos,ypos,width/scaleX*2, height/scaleY*2);
-                            ctx.restore();
-                        }
-
-                        if(bmode != ctx.globalCompositeOperation) {
-
-                            var B = function(a, b){
-                                return b;
-                            }
-                            switch(bmode) {
-                                case 'multiply': B = function(a, b) { return a*b/255;}; break;
-                                case 'screen': B = function(a, b) { return a+b-a*b/255;}; break;
-                                case 'overlay': B = function(a, b) { return a*b/255;}; break;
-                                case 'darken': B = function(a, b) { return a<b?a:b;}; break;
-                                case 'lighten': B = function(a, b) { return a<b?a:b;}; break;
-                                case 'color-dodge': B = function(a, b) { return a*b/255;}; break;
-                                case 'color-burn': B = function(a, b) { return a*b/255;}; break;
-                                case 'hard-light': B = function(a, b) { return a*b/255;}; break;
-                                case 'soft-light': B = function(a, b) { return a*b/255;}; break;
-                                case 'difference': B = function(a, b) { return Math.abs(a-b);}; break;
-                                case 'exclusion': B = function(a, b) { return Math.abs(a-b);}; break;
-                                case 'hue': B = function(a, b) { return a*b/255;}; break;
-                                case 'saturation': B = function(a, b) { return a*b/255;}; break;
-                                case 'color': B = function(a, b) { return a*b/255;}; break;
-                                case 'luminosity': B = function(a, b) { return a*b/255;}; break;
-                            }
-                            for(var z = 0; z < height; z++) {
-                                var source = ctx.getImageData(0, z, width, 1).data;
-                                var imgdest = oldctx.getImageData(0, z, width, 1);
-                                var dest = imgdest.data;
-
-                                for(var y = 0; y < width; y++) {
-                                    dest[y*4] = Math.floor((source[y*4+3] * (255 - dest[y*4+4]) * source[y*4] + source[y*4+3] * dest[y*4+3] * B(dest[y*4], source[y*4]) + (255- source[y*4+3]) * dest[y*4+3] * dest[y*4])/255/dest[y*4+3]);
-                                    dest[y*4+1] = Math.floor((source[y*4+3] * (255 - dest[y*4+3]) * source[y*4+1] + source[y*4+3] * dest[y*4+3] * B(dest[y*4+1], source[y*4+1]) + (255 - source[y*4+3]) * dest[y*4+3] * dest[y*4+1])/255/dest[y*4+3]);
-                                    dest[y*4+2] = Math.floor((source[y*4+3] * (255 - dest[y*4+3]) * source[y*4+2] + source[y*4+3] * dest[y*4+3] * B(dest[y*4+2], source[y*4+2]) + (255 - source[y*4+3]) * dest[y*4+3] * dest[y*4+2])/255/dest[y*4+3]);
-                                }
-                                oldctx.putImageData(imgdest, 0, z);
-                            }
-                            ctx = oldctx;         
-                        }
-                        ctx.restore();
-                    }
-                }
-
-                var CallDoDraw = true;
-                for(var x = 0; x < images.length; x++) {
-                    if(typeof images[x] === "string") {
-                        CallDoDraw = false;
-                        var img = new Image();
-                        htmlimages.push(img);
-                        img.onload = DoDraw;
-                        img.src = images[x];
-                    }
-                    else 
-                        htmlimages.push(undefined);
-                }
-                if(CallDoDraw){
-                    cnt = images.length;
-                    DoDraw();
-                }
-            }
-        });
-    };
-</script>
+<script src="background-polyfill.js"></script>
 <script>
     $(document).ready(function () {
         BackgroundBlendModePolyfill.initialize({selector: "#b"});
@@ -682,6 +18,79 @@ div, canvas
 }
 #b 
 {
+    /*
+    background:
+	radial-gradient(
+		transparent 0,
+		transparent 2em,
+		lightblue 2em,
+		lightblue 2.5em,
+		transparent 2.5em,
+		transparent 100%
+	),
+	radial-gradient(
+		transparent 0,
+		transparent 2em,
+		aquamarine 2em,
+		aquamarine 2.5em,
+		transparent 2.5em,
+		transparent 100%
+	),
+	radial-gradient(
+		transparent 0,
+		transparent 2em,
+		khaki 2em,
+		khaki 2.5em,
+		transparent 2.5em,
+		transparent 100%
+	),
+	radial-gradient(
+		transparent 0,
+		transparent 2em,
+		pink 2em,
+		pink 2.5em,
+		transparent 2.5em,
+		transparent 100%
+	), linen;
+
+
+background-blend-mode: multiply;
+background-size: 5em 5em;
+background-position:
+	0 2.5em,
+	2.5em 0,
+	2.5em 2.5em,
+	0 0;
+}*/
+/*
+background:
+
+        radial-gradient(
+            circle at center bottom,
+            coral, darkslateblue
+        );
+    
+    background-blend-mode: overlay;
+    background-size:
+        cover;
+*/
+background:
+    linear-gradient(
+        limegreen,
+        transparent
+    ),
+    linear-gradient(
+        90deg,
+        skyblue,
+        transparent
+    ),
+    linear-gradient(
+        -90deg,
+        coral,
+        transparent
+    );
+    
+    
     /*
     background: url("no-profile.png"), url("current.jpg");
     backgrolund-blend-mode: multiply;
@@ -704,7 +113,7 @@ div, canvas
         khaki 8em,
         transparent 8em,
         transparent 10em
-    )*/
+    )*//*
 background:
     radial-gradient(
         circle at bottom left,
@@ -761,7 +170,7 @@ background:
     
 background-blend-mode: multiply;
 background-size: 10em 10em;
-background-position: 0 0, 0 0, 5em 5em, 5em 5em;
+background-position: 0 0, 0 0, 5em 5em, 5em 5em;*/
 }
 </style>
 <body>
