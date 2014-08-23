@@ -150,7 +150,7 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
             var height = $(this).height();
 
             if(rule["background-blend-mode"] === undefined) {
-                rule["background-blend-mode"] = s.split(" ");
+                rule["background-blend-mode"] = s.split(" ,");
             }
 
             var parseBackgrounds = function () {
@@ -320,7 +320,7 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
                         retval.blendmodes.push(entry.value);
                 }
                 if ((retval.blendmodes.length > 0) && (retval.blendmodes[0] == "undefined"))
-                    retval.blendmodes = s.split(" ");
+                    retval.blendmodes = s.split(" ,");
 
                 return retval;
             }
