@@ -575,7 +575,12 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
                         bmode = "source-over";
                     if(bmode != "normal")
                         ctx.globalCompositeOperation = bmode;
-                    if (bmode != ctx.globalCompositeOperation) { //unsupported
+
+                    var isSafari = Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0;
+                    var IsNonSep = false;
+                    if(isSafari)
+                        IsNonSep = bmode == 'hue' || bmode == 'saturation' || bmode == 'color' || bmode == 'luminosity';
+                    if (bmode != ctx.globalCompositeOperation || IsNonSep) { //unsupported
                         oldctx = ctx;
                         var canv = document.createElement("canvas");
                         canv.width = width;
@@ -620,7 +625,7 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
                         ctx.restore();
                     }
 
-                    if (bmode != ctx.globalCompositeOperation) {
+                    if (bmode != ctx.globalCompositeOperation || IsNonSep) {
 
                         var B = function (a, b) {
                             return b;
