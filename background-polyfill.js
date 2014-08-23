@@ -39,6 +39,11 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
     $(this.options.selector).each(function (i) {
         var g = window.getComputedStyle(this, null);
         var s = g["background-blend-mode"];
+        if (!s) {
+            s = this.attributes.backgroundblend;
+            if(s)
+                s = s.value;
+        }
         if (s && s != "normal") {
             var b = g.backgroundImage;
 
@@ -143,6 +148,10 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
             var sheet = parse(tokens).value[0].value;
             var width = $(this).width();
             var height = $(this).height();
+
+            if(rule["background-blend-mode"] === undefined) {
+                rule["background-blend-mode"] = s.split(" ");
+            }
 
             var parseBackgrounds = function () {
                 var retval = {};
@@ -310,6 +319,8 @@ BackgroundBlendModePolyfill.prototype.walk_css_tree = function () {
                     if (entry.tokenType == "IDENT")
                         retval.blendmodes.push(entry.value);
                 }
+                if ((retval.blendmodes.length > 0) && (retval.blendmodes[0] == "undefined"))
+                    retval.blendmodes = s.split(" ");
 
                 return retval;
             }
