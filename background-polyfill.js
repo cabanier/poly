@@ -3,17 +3,14 @@ function BackgroundBlendModePolyfill(options) {
     this.options = {
         selector: '*',
         usePolyfillIf: function () {
-            /*if (navigator.appName == 'Microsoft Internet Explorer') {
-            var agent = navigator.userAgent;
-            if (agent.match(/MSIE ([0-9]{1,}[\.0-9]{0,})/) != null) {
-            var version = parseFloat(RegExp.$1);
-            if (version < 11)
-            return true;
+            if (navigator.appName == 'Microsoft Internet Explorer') {
+                return true;
             }
-            }
+            var g = window.getComputedStyle(document.body, null)["background-blend-mode"];
+            if(g === undefined)
+              return true;
+
             return false;
-            */
-            return true;
         }
     };
     if (options) {
